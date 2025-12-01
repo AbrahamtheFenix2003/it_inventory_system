@@ -1,0 +1,110 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: it_inventory_db
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: it_inventory
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    networks:
+      - it_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d it_inventory"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  gateway:
+    build: ./gateway
+    container_name: it_inventory_gateway
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./gateway:/app
+    depends_on:
+      - providers_service
+      - equipment_service
+      - maintenance_service
+      - reports_service
+    networks:
+      - it_net
+
+  providers_service:
+    build: ./services/providers
+    container_name: providers_service
+    environment:
+      DATABASE_URL: postgresql://admin:password@db:5432/it_inventory
+    volumes:
+      - ./services/providers:/app
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - it_net
+
+  equipment_service:
+    build: ./services/equipment
+    container_name: equipment_service
+    environment:
+      DATABASE_URL: postgresql://admin:password@db:5432/it_inventory
+    volumes:
+      - ./services/equipment:/app
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - it_net
+
+  maintenance_service:
+    build: ./services/maintenance
+    container_name: maintenance_service
+    environment:
+      DATABASE_URL: postgresql://admin:password@db:5432/it_inventory
+    volumes:
+      - ./services/maintenance:/app
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - it_net
+
+  reports_service:
+    build: ./services/reports
+    container_name: reports_service
+    environment:
+      DATABASE_URL: postgresql://admin:password@db:5432/it_inventory
+    volumes:
+      - ./services/reports:/app
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - it_net
+
+  frontend:
+    build: ./frontend
+    container_name: it_inventory_frontend
+    ports:
+      - "8501:8501"
+    environment:
+      API_GATEWAY_URL: http://gateway:8000
+    volumes:
+      - ./frontend:/app
+    depends_on:
+      - gateway
+    networks:
+      - it_net
+
+networks:
+  it_net:
+    driver: bridge
+
+volumes:
+  postgres_data:

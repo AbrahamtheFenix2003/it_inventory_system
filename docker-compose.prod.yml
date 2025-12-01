@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  db:
+    restart: always
+    environment:
+      # En producción, usa contraseñas fuertes pasadas por variables de entorno (.env)
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      # No montamos init.sql en prod si ya está inicializada, pero no hace daño dejarlo para el primer arranque
+
+  gateway:
+    restart: always
+    # En producción no montamos el código local, usamos la imagen construida
+    volumes: []
+    ports:
+      - "8000:8000"
+
+  providers_service:
+    restart: always
+    volumes: []
+    environment:
+      DATABASE_URL: postgresql://admin:${DB_PASSWORD}@db:5432/it_inventory
+
+  equipment_service:
+    restart: always
+    volumes: []
+    environment:
+      DATABASE_URL: postgresql://admin:${DB_PASSWORD}@db:5432/it_inventory
+
+  maintenance_service:
+    restart: always
+    volumes: []
+    environment:
+      DATABASE_URL: postgresql://admin:${DB_PASSWORD}@db:5432/it_inventory
+
+  reports_service:
+    restart: always
+    volumes: []
+    environment:
+      DATABASE_URL: postgresql://admin:${DB_PASSWORD}@db:5432/it_inventory
+
+  frontend:
+    restart: always
+    volumes: []
+    environment:
+      API_GATEWAY_URL: http://${SERVER_IP}:8000
